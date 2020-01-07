@@ -8,7 +8,7 @@ fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     let out_path = PathBuf::from(&out_dir);
 
-    Command::new("futhark")
+    let status = Command::new("futhark")
         .args(&[
             if cfg!(feature = "opencl") {
                 "opencl"
@@ -23,9 +23,14 @@ fn main() {
         .status()
         .expect("Failed to compile Futhark code");
 
+    if !status.success() {
+        panic!("Failed to compile Futhark code");
+    }
+
     cc::Build::new()
         .file(out_path.join("carve.c"))
         .shared_flag(true)
+        .warnings(false)
         .compile("carve");
 
     if cfg!(feature = "opencl") {

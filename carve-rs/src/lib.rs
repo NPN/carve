@@ -95,7 +95,7 @@ macro_rules! array_1d {
 array_1d!(ArrayU8, u8);
 array_1d!(ArrayF32, f32);
 
-pub fn energy(ctx: &Context, frame: &[u8], width: u16, height: u16) -> Vec<f32> {
+pub fn energy(ctx: &Context, frame: &[u8], width: u16, height: u16) -> Result<Vec<f32>, String> {
     let mut energy_arr_ptr = ptr::null::<futhark_f32_1d>() as *mut _;
     let frame_arr = ArrayU8::new(&ctx, frame);
 
@@ -109,11 +109,10 @@ pub fn energy(ctx: &Context, frame: &[u8], width: u16, height: u16) -> Vec<f32> 
         )
     };
     if ret != 0 {
-        panic!(ctx.get_error());
+        return Err(ctx.get_error());
     }
-    ctx.sync().expect("Failed to sync");
-    let energy_arr = ArrayF32::from_raw(&ctx, energy_arr_ptr);
-    energy_arr.values()
+    ctx.sync()?;
+    Ok(ArrayF32::from_raw(&ctx, energy_arr_ptr).values())
 }
 
 #[test]
@@ -123,7 +122,7 @@ fn simple_calculation() {
     let expected = [
         2669.0, 4745.0, 2097.0, 281.0, 4804.0, 2930.0, 1097.0, 360.0, 653.0,
     ];
-    let actual = energy(&ctx, &input, 3, 3);
+    let actual = energy(&ctx, &input, 3, 3).unwrap();
 
     assert_eq!(expected.len(), actual.len());
     for (e, a) in expected.iter().zip(actual.iter()) {
@@ -135,5 +134,5 @@ fn simple_calculation() {
 #[should_panic]
 fn wrong_width_height() {
     let ctx = Context::new();
-    energy(&ctx, &[1, 2, 3], 10, 10);
+    energy(&ctx, &[1, 2, 3], 10, 10).unwrap();
 }

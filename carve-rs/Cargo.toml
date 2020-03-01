@@ -1,9 +1,0 @@
-[package]
-name = "carve"
-version = "0.1.0"
-authors = ["Ryan Huang"]
-edition = "2018"
-
-[dependencies]
-carve-sys = { path = "../carve-sys" }
-paste = "0.1"

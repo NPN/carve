@@ -1,2 +1,2 @@
-carve-fut/*
-!carve-fut/*.fut
+futhark/*
+!futhark/*.fut

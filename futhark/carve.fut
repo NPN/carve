@@ -16,12 +16,10 @@ let sq_diff (a: u8) (b: u8): f32 =
 -- compiled random input { [1000][1000]u8 1000u16 1000u16 } auto output
 -- compiled random input { [2000][2000]u8 2000u16 2000u16 } auto output
 entry energy [h][w] (frame: [h][w]u8): [h][w]f32 =
-  map (\y ->
-    map (\x ->
-      let left  = if x == 0     then frame[y, x] else unsafe frame[y, x - 1]
-      let right = if x == w - 1 then frame[y, x] else unsafe frame[y, x + 1]
-      let up    = if y == 0     then frame[y, x] else unsafe frame[y - 1, x]
-      let down  = if y == h - 1 then frame[y, x] else unsafe frame[y + 1, x]
-      in (sq_diff left right) + (sq_diff up down)
-    ) (iota w)
-  ) (iota h)
+  tabulate_2d h w (\y x ->
+    let left  = if x == 0     then frame[y, x] else unsafe frame[y, x - 1]
+    let right = if x == w - 1 then frame[y, x] else unsafe frame[y, x + 1]
+    let up    = if y == 0     then frame[y, x] else unsafe frame[y - 1, x]
+    let down  = if y == h - 1 then frame[y, x] else unsafe frame[y + 1, x]
+    in (sq_diff left right) + (sq_diff up down)
+  )

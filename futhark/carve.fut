@@ -23,3 +23,9 @@ entry energy [h][w] (frame: [h][w]u8): [h][w]f32 =
     let down  = if y == h - 1 then frame[y, x] else unsafe frame[y + 1, x]
     in (sq_diff left right) + (sq_diff up down)
   )
+
+-- A quick and dirty way to map energy values to grayscale pixels.
+entry sqrt_norm_energy [h][w] (energy: [h][w]f32): [h][w]u8 =
+  let energy = map (map f32.sqrt) energy
+  let max = reduce (\a b -> if a > b then a else b) 0 (flatten energy)
+  in map (map (\e -> u8.f32 (e / max * 255))) energy

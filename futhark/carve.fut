@@ -1,7 +1,3 @@
-let sq_diff (a: u8) (b: u8): f32 =
-  let diff = (f32.u8 a) - (f32.u8 b)
-  in diff * diff
-
 -- ==
 -- entry: energy
 -- input  { [[158u8,  82u8, 231u8,  16u8],
@@ -15,7 +11,8 @@ let sq_diff (a: u8) (b: u8): f32 =
 -- compiled random input { [1000][1000]u8 } auto output
 -- compiled random input { [2000][2000]u8 } auto output
 entry energy [h][w] (frame: [h][w]u8): [h][w]f32 =
-  tabulate_2d h w (\y x ->
+  let sq_diff a b = let diff = (f32.u8 a) - (f32.u8 b) in diff * diff
+  in tabulate_2d h w (\y x ->
     let left  = if x == 0     then frame[y, x] else frame[y, x - 1]
     let right = if x == w - 1 then frame[y, x] else frame[y, x + 1]
     let up    = if y == 0     then frame[y, x] else frame[y - 1, x]

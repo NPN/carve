@@ -10,6 +10,7 @@
 --           [12053.0f32,  1205.0f32, 24650.0f32,  7033.0f32]] }
 -- compiled random input { [1000][1000]u8 } auto output
 -- compiled random input { [2000][2000]u8 } auto output
+-- compiled random input { [4000][4000]u8 } auto output
 entry energy [h][w] (frame: [h][w]u8): [h][w]f32 =
   let sq_diff a b = let diff = (f32.u8 a) - (f32.u8 b) in diff * diff
   in tabulate_2d h w (\y x ->

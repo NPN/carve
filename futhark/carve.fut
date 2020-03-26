@@ -34,8 +34,10 @@ entry sqrt_norm_energy [h][w] (energy: [h][w]f32): [h][w]u8 =
 -- compiled random input { [4000][4000]f32 } auto output
 entry index_map [h][w] (energy: [h][w]f32): [h][w]i32 =
   tabulate_2d h w (\y x ->
-    if y == h - 1 then 0 else
-      let min i1 i2 = if energy[y + 1, i1] < energy[y + 1, i2] then i1 else i2
+    if y == h - 1 then x else
+      -- We need <= so that seams stay vertical in uniform regions. Otherwise, every seam
+      -- will slant to the left or right and some regions will never be carved.
+      let min i1 i2 = if energy[y + 1, i1] <= energy[y + 1, i2] then i1 else i2
       let i = x
       let i = if x != 0     then min i (x - 1) else i
       let i = if x != w - 1 then min i (x + 1) else i
@@ -61,7 +63,7 @@ entry min_seam_index [h][w] (energy: [h][w]f32) (index: [h][w]i32): i32 =
               in map (\r -> r[0] `op` r[1])
                      (unflatten (length as' / 2) 2 as')
   let seam_sum = res[0].0
-  in reduce (\a b -> if seam_sum[a] < seam_sum[b] then a else b) 0 (iota w)
+  in reduce (\a b -> if seam_sum[a] <= seam_sum[b] then a else b) 0 (iota w)
 
 entry resize_frame [h][w] (frame: [h][w]u8) (seam: [h]i32): [h][]u8 =
   tabulate_2d h (w - 1) (\y x ->

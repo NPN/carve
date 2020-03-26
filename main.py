@@ -36,9 +36,9 @@ if __name__ == "__main__":
         for _ in range(args.pixels):
             energy = carve.energy(frame)
             index_map = carve.index_map(energy)
-            # Copy the index map while finding the max seam to hide latency
+            # Copy the index map while finding the min seam to hide latency
             (h_index_map, nanny) = index_map.get_async()
-            max_seam_index = carve.max_seam_index(energy, index_map)
+            min_seam_index = carve.min_seam_index(energy, index_map)
             nanny.wait()
             # Free device's index map? Not sure if needed.
             index_map = h_index_map
@@ -47,8 +47,8 @@ if __name__ == "__main__":
             # sequentially accessing the index map (stored in global memory).
             # So, we transfer it over and do it in Python.
             for i in range(height):
-                seam[i] = max_seam_index
-                max_seam_index = index_map[i][max_seam_index]
+                seam[i] = min_seam_index
+                min_seam_index = index_map[i][min_seam_index]
 
             frame = carve.resize_frame(frame, seam)
 

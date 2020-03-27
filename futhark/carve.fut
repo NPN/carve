@@ -22,10 +22,11 @@ entry resize_frame [h][w] (frame: [h][w]u8) (seam: [h]i32): [h][]u8 =
 -- compiled random input { [4000][4000]u8 } auto output
 entry energy [h][w] (frame: [h][w]u8): [h][w]f32 =
   tabulate_2d h w (\y x ->
-    let left  = if x == 0     then frame[y, x] else frame[y, x - 1]
-    let right = if x == w - 1 then frame[y, x] else frame[y, x + 1]
-    let up    = if y == 0     then frame[y, x] else frame[y - 1, x]
-    let down  = if y == h - 1 then frame[y, x] else frame[y + 1, x]
+    let p = frame[y, x]
+    let left  = if x == 0     then p else frame[y, x - 1]
+    let right = if x == w - 1 then p else frame[y, x + 1]
+    let up    = if y == 0     then p else frame[y - 1, x]
+    let down  = if y == h - 1 then p else frame[y + 1, x]
     in (sq_diff left right) + (sq_diff up down)
   )
 

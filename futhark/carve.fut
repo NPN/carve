@@ -1,4 +1,13 @@
--- ==
+let sq_diff a b =
+  let diff = (f32.u8 a) - (f32.u8 b)
+  in diff * diff
+
+entry resize_frame [h][w] (frame: [h][w]u8) (seam: [h]i32): [h][]u8 =
+  tabulate_2d h (w - 1) (\y x ->
+    if x < seam[y] then frame[y, x] else frame[y, x + 1]
+  )
+
+-- ==X
 -- entry: energy
 -- input  { [[158u8,  82u8, 231u8,  16u8],
 --           [ 98u8,  86u8,  24u8, 153u8],
@@ -12,14 +21,23 @@
 -- compiled random input { [2000][2000]u8 } auto output
 -- compiled random input { [4000][4000]u8 } auto output
 entry energy [h][w] (frame: [h][w]u8): [h][w]f32 =
-  let sq_diff a b = let diff = (f32.u8 a) - (f32.u8 b) in diff * diff
-  in tabulate_2d h w (\y x ->
+  tabulate_2d h w (\y x ->
     let left  = if x == 0     then frame[y, x] else frame[y, x - 1]
     let right = if x == w - 1 then frame[y, x] else frame[y, x + 1]
     let up    = if y == 0     then frame[y, x] else frame[y - 1, x]
     let down  = if y == h - 1 then frame[y, x] else frame[y + 1, x]
     in (sq_diff left right) + (sq_diff up down)
   )
+
+entry temporal_coherence [h][w] (frame: [h][w]u8) (seam: [h]i32): [h][w]f32 =
+  let resized = resize_frame frame seam
+  let suffix_scan op ne as = reverse (scan op ne (reverse as))
+  in map (\(f, r) ->
+    -- We use indexing because I can't get the size types to compile otherwise
+    let left  =        scan (+) 0 (map (\i -> sq_diff f[i]     r[i]) (iota (w - 1)))
+    let right = suffix_scan (+) 0 (map (\i -> sq_diff f[i + 1] r[i]) (iota (w - 1)))
+    in map2 (+) ([0] ++ left :> [w]f32) (right ++ [0] :> [w]f32)
+  ) (zip frame resized)
 
 -- A quick and dirty way to map energy values to grayscale pixels.
 entry sqrt_norm_energy [h][w] (energy: [h][w]f32): [h][w]u8 =
@@ -64,8 +82,3 @@ entry min_seam_index [h][w] (energy: [h][w]f32) (index: [h][w]i32): i32 =
                      (unflatten (length as' / 2) 2 as')
   let seam_sum = res[0].0
   in reduce (\a b -> if seam_sum[a] <= seam_sum[b] then a else b) 0 (iota w)
-
-entry resize_frame [h][w] (frame: [h][w]u8) (seam: [h]i32): [h][]u8 =
-  tabulate_2d h (w - 1) (\y x ->
-    if x < seam[y] then frame[y, x] else frame[y, x + 1]
-  )

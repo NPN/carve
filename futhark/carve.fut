@@ -42,10 +42,26 @@ entry temporal_coherence [h][w] (frame: [h][w]u8) (seam: [h]i32): [h][w]f32 =
     in map2 (+) ([0] ++ left :> [w]f32) (right ++ [0] :> [w]f32)
   ) (zip frame resized)
 
+-- ==
+-- entry: spatial_coherence_horz
+-- compiled random input { [1000][1000]u8 } auto output
+-- compiled random input { [2000][2000]u8 } auto output
+-- compiled random input { [4000][4000]u8 } auto output
+entry spatial_coherence_horz [h][w] (frame: [h][w]u8): [h][w]f32 =
+  tabulate_2d h w (\y x ->
+    let row = frame[y]
+    let diff a b = f32.abs ((f32.u8 row[x + a]) - (f32.u8 row[x + b]))
+    in if      x == 0     then f32.abs ((diff   0    1)  - (diff   1  2))
+       else if x == w - 1 then f32.abs ((diff (-2) (-1)) - (diff (-1) 0))
+       else (diff (-1) 0) + (diff 0 1) - (diff (-1) 1)
+ )
+
 entry energy [h][w] (frame: [h][w]u8) (seam: [h]i32): [h][w]f32 =
   let saliency = saliency frame
   let tc = temporal_coherence frame seam
-  in map2 (map2 (+)) tc (map (map (2*)) saliency)
+  let sc_horz = spatial_coherence_horz frame
+  -- Grundmann et al. suggests "a weight ratio Sc:Tc:S of 5:1:2 for most sequences"
+  in map3 (map3 (\x y z -> x + y + z)) (map (map (5*)) sc_horz) tc (map (map (2*)) saliency)
 
 -- A quick and dirty way to map energy values to grayscale pixels.
 entry sqrt_norm_energy [h][w] (energy: [h][w]f32): [h][w]u8 =

@@ -44,7 +44,7 @@ for i, frame in enumerate(container_in.decode(video=0)):
     frame = cl.array.to_device(carve.queue, frame.to_ndarray(format=VIDEO_FORMAT))
     for p in range(args.pixels):
         if i == 0:
-            energy = carve.saliency(frame)
+            energy = carve.energy_first(frame)
         else:
             energy = carve.energy(frame, seams[p])
 

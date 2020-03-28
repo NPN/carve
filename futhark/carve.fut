@@ -56,6 +56,14 @@ entry spatial_coherence_horz [h][w] (frame: [h][w]u8): [h][w]f32 =
        else (diff (-1) 0) + (diff 0 1) - (diff (-1) 1)
  )
 
+-- Energy function for the first frame. We skip temporal coherence since there's no previous frame
+-- to get seams from.
+entry energy_first [h][w] (frame: [h][w]u8): [h][w]f32 =
+  let saliency = saliency frame
+  let sc_horz = spatial_coherence_horz frame
+  -- Grundmann et al. suggests "a weight ratio Sc:Tc:S of 5:1:2 for most sequences"
+  in map2 (map2 (+)) (map (map (5*)) sc_horz) (map (map (2*)) saliency)
+
 entry energy [h][w] (frame: [h][w]u8) (seam: [h]i32): [h][w]f32 =
   let saliency = saliency frame
   let tc = temporal_coherence frame seam

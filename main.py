@@ -2,6 +2,7 @@ import argparse
 
 import av
 import numpy as np
+from progress.bar import IncrementalBar
 import pyopencl as cl
 
 import carve
@@ -18,6 +19,7 @@ if __name__ == "__main__":
     carve = carve.carve()
 
     container_in = av.open(args.input, "r")
+    frames = container_in.streams.video[0].frames
     codec_context = container_in.streams.video[0].codec_context
     width = codec_context.width
     height = codec_context.height
@@ -31,7 +33,14 @@ if __name__ == "__main__":
 
     seams = np.empty((args.pixels, height), np.int32)
 
+    progress = IncrementalBar(
+        "Carving",
+        max=frames,
+        suffix="%(index)d/%(max)d [%(elapsed_td)s / ETA: %(eta_td)s]",
+    )
+
     for i, frame in enumerate(container_in.decode(video=0)):
+        progress.next()
         frame = cl.array.to_device(carve.queue, frame.to_ndarray(format=VIDEO_FORMAT))
         for p in range(args.pixels):
             if i == 0:
@@ -61,6 +70,7 @@ if __name__ == "__main__":
             container_out.mux(packet)
 
     container_in.close()
+    progress.finish()
 
     for packet in stream_out.encode():
         container_out.mux(packet)

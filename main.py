@@ -29,12 +29,16 @@ if __name__ == "__main__":
     stream_out.width = width - args.pixels
     stream_out.height = height
 
-    seam = np.empty(height, np.int32)
+    seams = np.empty((args.pixels, height), np.int32)
 
-    for frame in container_in.decode(video=0):
+    for i, frame in enumerate(container_in.decode(video=0)):
         frame = cl.array.to_device(carve.queue, frame.to_ndarray(format=VIDEO_FORMAT))
-        for _ in range(args.pixels):
-            energy = carve.energy(frame)
+        for p in range(args.pixels):
+            if i == 0:
+                energy = carve.saliency(frame)
+            else:
+                energy = carve.energy(frame, seams[p])
+
             index_map = carve.index_map(energy)
             # Copy the index map while finding the min seam to hide latency
             (h_index_map, nanny) = index_map.get_async()
@@ -46,11 +50,11 @@ if __name__ == "__main__":
             # Apparently the GPU is slow at carving because it requires
             # sequentially accessing the index map (stored in global memory).
             # So, we transfer it over and do it in Python.
-            for i in range(height):
-                seam[i] = min_seam_index
-                min_seam_index = index_map[i][min_seam_index]
+            for h in range(height):
+                seams[p][h] = min_seam_index
+                min_seam_index = index_map[h][min_seam_index]
 
-            frame = carve.resize_frame(frame, seam)
+            frame = carve.resize_frame(frame, seams[p])
 
         frame = av.VideoFrame.from_ndarray(frame.get(), format=VIDEO_FORMAT)
         for packet in stream_out.encode(frame):

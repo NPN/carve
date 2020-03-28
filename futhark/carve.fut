@@ -10,8 +10,8 @@ entry resize_frame [h][w] (frame: [h][w]u8) (seam: [h]i32): [h][]u8 =
     if x < seam[y] then frame[y, x] else frame[y, x + 1]
   )
 
--- ==X
--- entry: energy
+-- ==
+-- entry: saliency
 -- input  { [[158u8,  82u8, 231u8,  16u8],
 --           [ 98u8,  86u8,  24u8, 153u8],
 --           [ 72u8, 236u8,  76u8, 106u8],
@@ -23,7 +23,7 @@ entry resize_frame [h][w] (frame: [h][w]u8) (seam: [h]i32): [h][]u8 =
 -- compiled random input { [1000][1000]u8 } auto output
 -- compiled random input { [2000][2000]u8 } auto output
 -- compiled random input { [4000][4000]u8 } auto output
-entry energy [h][w] (frame: [h][w]u8): [h][w]f32 =
+entry saliency [h][w] (frame: [h][w]u8): [h][w]f32 =
   tabulate_2d h w (\y x ->
     let p = frame[y, x]
     let left  = if x == 0     then p else frame[y, x - 1]
@@ -41,6 +41,11 @@ entry temporal_coherence [h][w] (frame: [h][w]u8) (seam: [h]i32): [h][w]f32 =
     let right = suffix_scan (+) 0 (map (\i -> sq_diff f[i + 1] r[i]) (iota (w - 1)))
     in map2 (+) ([0] ++ left :> [w]f32) (right ++ [0] :> [w]f32)
   ) (zip frame resized)
+
+entry energy [h][w] (frame: [h][w]u8) (seam: [h]i32): [h][w]f32 =
+  let saliency = saliency frame
+  let tc = temporal_coherence frame seam
+  in map2 (map2 (+)) tc (map (map (2*)) saliency)
 
 -- A quick and dirty way to map energy values to grayscale pixels.
 entry sqrt_norm_energy [h][w] (energy: [h][w]f32): [h][w]u8 =

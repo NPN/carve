@@ -3,3 +3,6 @@ carve.py
 
 futhark/*
 !futhark/*.fut
+
+# Test videos
+*.mp4

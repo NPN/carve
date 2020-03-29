@@ -2,9 +2,6 @@ let sq_diff a b =
   let diff = (f32.u8 a) - (f32.u8 b)
   in diff * diff
 
-let suffix_scan [n] 'a (op: a -> a -> a) (ne: a) (as: [n]a): *[n]a =
-  reverse (scan op ne (reverse as))
-
 entry resize_frame [h][w] (frame: [h][w]u8) (seam: [h]i32): [h][]u8 =
   tabulate_2d h (w - 1) (\y x ->
     if x < seam[y] then frame[y, x] else frame[y, x + 1]
@@ -35,6 +32,7 @@ entry saliency [h][w] (frame: [h][w]u8): [h][w]f32 =
 
 entry temporal_coherence [h][w] (frame: [h][w]u8) (seam: [h]i32): [h][w]f32 =
   let resized = resize_frame frame seam
+  let suffix_scan op ne as = reverse (scan op ne (reverse as))
   in map (\(f, r) ->
     -- We use indexing because I can't get the size types to compile otherwise
     let left  =        scan (+) 0 (map (\i -> sq_diff f[i]     r[i]) (iota (w - 1)))

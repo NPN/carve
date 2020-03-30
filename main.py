@@ -37,7 +37,7 @@ seams = np.empty((args.pixels, height), np.int32)
 progress = IncrementalBar(
     "Carving",
     max=frames,
-    suffix="%(index)d/%(max)d [%(elapsed_td)s / ETA: %(eta_td)s]",
+    suffix="%(index)d/%(max)d frames  [%(elapsed_td)s / ETA: %(eta_td)s]",
 )
 atexit.register(progress.finish)
 

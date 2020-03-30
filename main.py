@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+import atexit
 
 import av
 import numpy as np
@@ -38,6 +39,7 @@ progress = IncrementalBar(
     max=frames,
     suffix="%(index)d/%(max)d [%(elapsed_td)s / ETA: %(eta_td)s]",
 )
+atexit.register(progress.finish)
 
 for i, frame in enumerate(container_in.decode(video=0)):
     progress.next()
@@ -70,7 +72,6 @@ for i, frame in enumerate(container_in.decode(video=0)):
         container_out.mux(packet)
 
 container_in.close()
-progress.finish()
 
 for packet in stream_out.encode():
     container_out.mux(packet)

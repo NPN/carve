@@ -1,10 +1,9 @@
 from argparse import ArgumentParser
-import atexit
 
 import av
 import numpy as np
-from progress.bar import IncrementalBar
 import pyopencl as cl
+from tqdm import tqdm
 
 import carve
 
@@ -51,15 +50,9 @@ stream_out.height = height
 
 seams = np.empty((args.pixels, height), np.int32)
 
-progress = IncrementalBar(
-    "Carving",
-    max=frames,
-    suffix="%(index)d/%(max)d frames  [%(elapsed_td)s / ETA: %(eta_td)s]",
-)
-atexit.register(progress.finish)
-
-for i, frame in enumerate(container_in.decode(video=0)):
-    progress.next()
+for i, frame in tqdm(
+    enumerate(container_in.decode(video=0)), total=frames, unit="fr", disable=None
+):
     frame = cl.array.to_device(carve.queue, frame.to_ndarray(format=VIDEO_FORMAT))
     for p in range(args.pixels):
         if i == 0:

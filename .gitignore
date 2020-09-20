@@ -6,3 +6,4 @@ futhark/*
 
 # Test videos
 *.mp4
+*.mov

@@ -99,7 +99,7 @@ entry index_map [h][w] (energy: [h][w]f32): [h][w]i32 =
 -- that made the performance pretty bad."
 -- Athas quoted from: https://gitter.im/futhark-lang/Lobby?at=5dfb3eb9b1701e50ca4d9005
 -- Direct indexing example: https://futhark-lang.org/blog/2019-04-10-what-is-the-minimal-basis-for-futhark.html#parallel-reduction
-entry min_seam_index [h][w] (energy: [h][w]f32) (index: [h][w]i32): i32 =
+entry seam_energy [h][w] (energy: [h][w]f32) (index: [h][w]i32): [w]f32 =
   let op (e1, i1) (e2, i2) =
     let energy_sum = map2 (\e i -> e + e2[i]) e1 i1
     let next_index = map (\i -> i2[i]) i1
@@ -110,5 +110,4 @@ entry min_seam_index [h][w] (energy: [h][w]f32) (index: [h][w]i32): i32 =
               let as' = if (length as) % 2 == 1 then as ++ [ne] else as
               in map (\r -> r[0] `op` r[1])
                      (unflatten (length as' / 2) 2 as')
-  let seam_sum = res[0].0
-  in reduce (\a b -> if seam_sum[a] <= seam_sum[b] then a else b) 0 (iota w)
+  in res[0].0

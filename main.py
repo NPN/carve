@@ -17,6 +17,23 @@ parser.add_argument("output", help="Output video file")
 parser.add_argument("pixels", type=int, help="Number of pixels to carve")
 args = parser.parse_args()
 
+
+rng = np.random.default_rng()
+
+# If multiple seams have the lowest energy (e.g. when carving a solid color
+# background), we need to randomly choose one of them. If we always pick a
+# default index instead, all the seams will be bunched together. This is fine
+# for that frame, but it will destroy the following frames through the temporal
+# coherence penalty.
+def min_choice(x):
+    min_idx = np.argmin(x)
+    min_mask = x == x[min_idx]
+    if np.count_nonzero(min_mask) == 1:
+        return min_idx
+    else:
+        return rng.choice(np.nonzero(min_mask)[0])
+
+
 carve = carve.carve()
 
 container_in = av.open(args.input, "r")
@@ -53,7 +70,9 @@ for i, frame in enumerate(container_in.decode(video=0)):
         index_map = carve.index_map(energy)
         # Copy the index map while finding the min seam to hide latency
         (h_index_map, nanny) = index_map.get_async()
-        min_seam_index = carve.min_seam_index(energy, index_map)
+        # But we have to synchronize here anyway, so I don't know if it matters.
+        seam_energy = carve.seam_energy(energy, index_map).get()
+        min_seam_index = min_choice(seam_energy)
         nanny.wait()
         # Free device's index map? Not sure if needed.
         index_map = h_index_map

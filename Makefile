@@ -8,3 +8,13 @@ futhark/_carve.o: futhark/carve.c futhark/carve.h
 
 futhark/carve.c futhark/carve.h &: futhark/carve.fut
 	futhark opencl --library $^
+
+clean:
+	rm -f futhark/_carve.* futhark/carve{,.c,.h}
+
+clean-data:
+	rm -rf futhark/data
+
+clean-all: clean clean-data
+
+.PHONY: all clean clean-data clean-all

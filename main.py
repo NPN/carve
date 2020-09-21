@@ -1,11 +1,11 @@
 from argparse import ArgumentParser
 
 import av
+from futhark_ffi import Futhark
 import numpy as np
-import pyopencl as cl
 from tqdm import tqdm
 
-import carve
+import futhark._carve as _carve
 
 VIDEO_FORMAT = "gray8"
 
@@ -33,7 +33,15 @@ def min_choice(x):
         return rng.choice(np.nonzero(min_mask)[0])
 
 
-carve = carve.carve()
+carve = Futhark(_carve)
+
+# We want to keep `frame` on the GPU for the duration of its carving. This
+# means we need to use to_futhark(). But this requires us to know the fut_type,
+# which isn't directly exposed. So, we have to search through carve.types.
+for ftype in carve.types.values():
+    if ftype.itemtype.cname == "uint8_t *" and ftype.rank == 2:
+        u8_2d = ftype
+
 
 container_in = av.open(args.input, "r")
 frames = container_in.streams.video[0].frames
@@ -53,7 +61,7 @@ seams = np.empty((args.pixels, height), np.int32)
 for i, frame in tqdm(
     enumerate(container_in.decode(video=0)), total=frames, unit="fr", disable=None
 ):
-    frame = cl.array.to_device(carve.queue, frame.to_ndarray(format=VIDEO_FORMAT))
+    frame = carve.to_futhark(u8_2d, frame.to_ndarray(format=VIDEO_FORMAT))
     for p in range(args.pixels):
         if i == 0:
             energy = carve.energy_first(frame)
@@ -61,14 +69,9 @@ for i, frame in tqdm(
             energy = carve.energy(frame, seams[p])
 
         index_map = carve.index_map(energy)
-        # Copy the index map while finding the min seam to hide latency
-        (h_index_map, nanny) = index_map.get_async()
-        # But we have to synchronize here anyway, so I don't know if it matters.
-        seam_energy = carve.seam_energy(energy, index_map).get()
+        seam_energy = carve.seam_energy(energy, index_map)
+        index_map, seam_energy = carve.from_futhark(index_map, seam_energy)
         min_seam_index = min_choice(seam_energy)
-        nanny.wait()
-        # Free device's index map? Not sure if needed.
-        index_map = h_index_map
 
         # Apparently the GPU is slow at carving because it requires
         # sequentially accessing the index map (stored in global memory).
@@ -79,7 +82,7 @@ for i, frame in tqdm(
 
         frame = carve.resize_frame(frame, seams[p])
 
-    frame = av.VideoFrame.from_ndarray(frame.get(), format=VIDEO_FORMAT)
+    frame = av.VideoFrame.from_ndarray(carve.from_futhark(frame), format=VIDEO_FORMAT)
     for packet in stream_out.encode(frame):
         container_out.mux(packet)
 

@@ -1,4 +1,4 @@
 av==8.0.2
+futhark-ffi==0.10.2
 numpy==1.19.2
-pyopencl==2020.02.02
 tqdm==4.49.0

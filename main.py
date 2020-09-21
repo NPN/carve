@@ -5,7 +5,7 @@ from futhark_ffi import Futhark
 import numpy as np
 from tqdm import tqdm
 
-import futhark._carve as _carve
+import futhark._carve_cl as _carve
 
 VIDEO_FORMAT = "gray8"
 

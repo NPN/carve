@@ -18,6 +18,14 @@ Any codec or container supported by FFmpeg should work. Some codecs, such as x26
 
 Currently, color is not supported, so the video will be converted to grayscale.
 
+If you want to reduce the height of the video instead of the width, flip the video before carving and then flip it back afterwards. It doesn't matter how you flip it so long as the height and width are exchanged. For example:
+```
+ffmpeg -i video.mp4 -vf transpose video-flip.mp4
+python main.py video-flip.mp4 video-flip-carve.mp4 100
+ffmpeg -i video-flip-carve.mp4 -vf transpose video-carve.mp4
+```
+This will result in a quality loss due to reencoding. In the future, an option could be added to flip the video internally to avoid this.
+
 ## References
 
 This project is based on the following research:

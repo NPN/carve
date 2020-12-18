@@ -2,6 +2,22 @@
 
 Resizing videos with seam carving.
 
+## Building
+
+Install the Python dependencies from `requirements.txt`. Then, follow the [instructions to install Futhark](https://futhark.readthedocs.io/en/stable/installation.html). If you want to use the OpenCL or CUDA backends, you will need the corresponding libraries. See the preceeding link for more details.
+
+Then, type `make`. This will compile the Futhark code into a library and use [`build_futhark_ffi`](https://github.com/pepijndevos/futhark-pycffi) to generate Python bindings. Currently, this only builds for OpenCL, but this can easily be changed—see the `Makefile` for details. (It is highly advised to use OpenCL or CUDA, as the C backend is far too slow for practical use.)
+
+## Usage
+
+```
+python main.py [input video] [output video] [pixels to carve]
+```
+
+Any codec or container supported by FFmpeg should work. Some codecs, such as x264, may require that the video have even dimensions. In that case, the number of pixels to carve must be even.
+
+Currently, color is not supported, so the video will be converted to grayscale.
+
 ## References
 
 This project is based on the following research:

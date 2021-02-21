@@ -5,7 +5,13 @@ from futhark_ffi import Futhark
 import numpy as np
 from tqdm import tqdm
 
-import futhark._carve_cl as _carve
+try:
+    import futhark._carve_cl as _carve
+except ModuleNotFoundError as exc:
+    import sys
+
+    print("Could not import '_carve_cl' module. Did you run `make`?")
+    sys.exit(1)
 
 VIDEO_FORMAT = "gray8"
 

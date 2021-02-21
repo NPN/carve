@@ -72,7 +72,7 @@ entry energy [h][w] (frame: [h][w]u8) (seam: [h]i64): [h][w]f32 =
 -- A quick and dirty way to map energy values to grayscale pixels.
 entry sqrt_norm_energy [h][w] (energy: [h][w]f32): [h][w]u8 =
   let energy = map (map f32.sqrt) energy
-  let max = reduce (\a b -> if a > b then a else b) 0 (flatten energy)
+  let max = f32.maximum (flatten energy)
   in map (map (\e -> u8.f32 (e / max * 255))) energy
 
 -- ==

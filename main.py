@@ -50,6 +50,7 @@ for ftype in carve.types.values():
 
 
 container_in = av.open(args.input, "r")
+container_in.streams.video[0].thread_type = "AUTO"
 frames = container_in.streams.video[0].frames
 codec_context = container_in.streams.video[0].codec_context
 width = codec_context.width
@@ -61,6 +62,7 @@ stream_out = container_out.add_stream(
 )
 stream_out.width = width - args.pixels
 stream_out.height = height
+stream_out.thread_type = "AUTO"
 
 seams = np.empty((args.pixels, height), np.int32)
 

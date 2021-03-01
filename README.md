@@ -1,6 +1,6 @@
 # carve
 
-Resizing videos with seam carving.
+Resizing videos with GPU seam carving.
 
 ## Building
 

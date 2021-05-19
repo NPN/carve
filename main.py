@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+import sys
 
 import av
 from futhark_ffi import Futhark
@@ -8,8 +9,6 @@ from tqdm import tqdm
 try:
     import futhark._carve_cl as _carve
 except ModuleNotFoundError as exc:
-    import sys
-
     print("Could not import '_carve_cl' module. Did you run `make`?")
     sys.exit(1)
 
@@ -21,6 +20,10 @@ parser.add_argument("input", help="Input video file")
 parser.add_argument("output", help="Output video file")
 parser.add_argument("pixels", type=int, help="Number of pixels to carve")
 args = parser.parse_args()
+
+if args.pixels <= 0:
+    print("`pixels` must be be at least 1")
+    sys.exit(1)
 
 
 rng = np.random.default_rng()

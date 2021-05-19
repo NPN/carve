@@ -42,16 +42,6 @@ def min_choice(x):
         return rng.choice(np.nonzero(min_mask)[0])
 
 
-carve = Futhark(_carve)
-
-# We want to keep `frame` on the GPU for the duration of its carving. This
-# means we need to use to_futhark(). But this requires us to know the fut_type,
-# which isn't directly exposed. So, we have to search through carve.types.
-for ftype in carve.types.values():
-    if ftype.itemtype.cname == "uint8_t *" and ftype.rank == 2:
-        u8_2d = ftype
-
-
 container_in = av.open(args.input, "r")
 container_in.streams.video[0].thread_type = "AUTO"
 frames = container_in.streams.video[0].frames
@@ -67,7 +57,19 @@ stream_out.width = width - args.pixels
 stream_out.height = height
 stream_out.thread_type = "AUTO"
 
-seams = np.empty((args.pixels, height), np.int32)
+
+carve = Futhark(_carve, profiling=args.profile)
+
+# We want to keep `frame` on the GPU for the duration of its carving. This
+# means we need to use to_futhark(). But this requires us to know the fut_type,
+# which isn't directly exposed. So, we have to search through carve.types.
+for ftype in carve.types.values():
+    if ftype.itemtype.cname == "uint8_t *" and ftype.rank == 2:
+        u8_2d = ftype
+
+
+seams = np.empty((args.pixels, height), np.int16)
+
 
 for i, frame in tqdm(
     enumerate(container_in.decode(video=0)), total=frames, unit="fr", disable=None

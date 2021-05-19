@@ -19,6 +19,7 @@ parser = ArgumentParser(description="Resize videos with seam carving.")
 parser.add_argument("input", help="Input video file")
 parser.add_argument("output", help="Output video file")
 parser.add_argument("pixels", type=int, help="Number of pixels to carve")
+parser.add_argument("--profile", action="store_true", help="Print profiling info")
 args = parser.parse_args()
 
 if args.pixels <= 0:
@@ -105,3 +106,28 @@ for packet in stream_out.encode():
     container_out.mux(packet)
 
 container_out.close()
+
+if args.profile:
+    # Filter, format, and sort profiling output
+    import re
+
+    REPORT_RE = re.compile(r"([^ ]+) +ran +(\d+) times; avg: +(\d+)us; total: +(\d+)us")
+    raw_report = carve.report().strip().split("\n")
+
+    peak_memory = raw_report[0].split(" ")
+    print(" ".join(peak_memory[:-2]), int(peak_memory[-2]) / 1e6, "megabytes")
+
+    total_runtime = raw_report[-1].split(" ")
+    print(" ".join(total_runtime[:-1]), str(int(total_runtime[-1][:-2]) / 1e6) + "s")
+
+    report = []
+    for l in raw_report[1:-1]:
+        m = REPORT_RE.fullmatch(l)
+        if int(m[2]) == 0:
+            continue
+        report.append((m[1], int(m[2]), int(m[3]), int(m[4]) / 1000))
+
+    report.sort(key=lambda l: l[3], reverse=True)
+
+    for l in report:
+        print(f"{l[0]:<45} ran {l[1]:>4} times, avg {l[2]:>4}us, total {l[3]:>6.2f}ms")

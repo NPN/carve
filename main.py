@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 try:
     import futhark._carve_cl as _carve
-except ModuleNotFoundError as exc:
+except ModuleNotFoundError:
     print("Could not import '_carve_cl' module. Did you run `make`?")
     sys.exit(1)
 

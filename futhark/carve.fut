@@ -32,13 +32,64 @@ entry saliency [h][w] (frame: [h][w]u8): [h][w]f32 =
 
 entry temporal_coherence [h][w] (frame: [h][w]u8) (seam: [h]i16): [h][w]f32 =
   let resized = resize_frame frame seam
-  let suffix_scan op ne as = reverse (scan op ne (reverse as))
-  in map (\(f, r) ->
-    -- We use indexing because I can't get the size types to compile otherwise
-    let left  =        scan (+) 0 (map (\i -> sq_diff f[i]     r[i]) (iota (w - 1)))
-    let right = suffix_scan (+) 0 (map (\i -> sq_diff f[i + 1] r[i]) (iota (w - 1)))
-    in map2 (+) ([0] ++ left :> [w]f32) (right ++ [0] :> [w]f32)
-  ) (zip frame resized)
+  let both = zip frame resized
+
+  -- How is this calculating temporal coherence (TC)? (Here, I'm only concerned
+  -- about the implementation. See the paper for an explanation of TC itself.)
+  -- Let's focus on one row and assume that it's 3 pixels wide. We want to
+  -- calculate a particular summation of squared differences (SDs) between
+  -- `frame` and `resized`. If we picture `frame` and `resized` like this:
+  --
+  -- frame     0   1   2
+  --           | / | /
+  -- resized   0   1
+  --
+  -- Then we'll say that `left` consists of the vertical lines `|` (SDs between
+  -- elements of the same index), while `right` consists of the slanted lines
+  -- `/` (SDs between elements with indexes off by one). The result we want to
+  -- produce is this particular sum:
+  --
+  -- [ //, |/, || ]
+  --
+  -- We see that the first element `//` is the TC score for deleting pixel 0:
+  --
+  -- frame     x   1   2
+  --             /   /
+  -- resized   0   1
+  --
+  -- Similarly, the second element `|/` is the TC score for deleting pixel 1:
+  --
+  -- frame     0   x   2
+  --           |     /
+  -- resized   0   1
+  --
+  -- And so on for the pixel 2. Now, one way to calculate this is to do:
+  --
+  -- [0] ++ (scan (+) 0 [|, |])                     = [0, |, ||]
+  -- (reverse (scan (+) 0 (reverse [/, /]))) ++ [0] = [//, /, 0]
+  -- map2 (+) [0, |, ||] [//, /, 0]                 = [//, |/, ||]
+  --
+  -- But, `scan` is slow, so we want to avoid using it twice. The same goes for
+  -- `reverse`. So, we do this instead:
+  --
+  -- map2 (-) ([0] ++ [|, |]) ([0] ++ [/, /]) = [0, | - /, | - /]
+  -- scan (+) 0 [0, | - /, | - /]             = [0, | - /, || - //]
+  -- reduce (+) 0 [/, /]                      = //
+  -- map (+//) [0, | - /, || - //]            = [//, |/, ||]
+  --
+  -- In other words, we scan over the difference between `left` and `right`,
+  -- then add back the sum of `right`. This requires just one `scan`, one
+  -- `reduce`, and no `reverse`s.
+
+  let left  = map (\(f, r) -> [0] ++ (map (\i -> (sq_diff f[i]   r[i])) (iota (w - 1))) :> [w]f32) both
+  let right = map (\(f, r) -> [0] ++ (map (\i -> (sq_diff f[i+1] r[i])) (iota (w - 1))) :> [w]f32) both
+
+  let scan_reduce [n] (a: [n]f32) (b: [n]f32): [n]f32 =
+    let s = scan (+) 0 (map2 (-) a b)
+    let b_sum = reduce (+) 0 b
+    in map (+b_sum) s
+
+  in map2 scan_reduce left right
 
 -- ==
 -- entry: spatial_coherence_horz

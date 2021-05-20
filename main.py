@@ -19,7 +19,7 @@ parser = ArgumentParser(description="Resize videos with seam carving.")
 parser.add_argument("input", help="Input video file")
 parser.add_argument("output", help="Output video file")
 parser.add_argument("pixels", type=int, help="Number of pixels to carve")
-parser.add_argument("--profile", action="store_true", help="Print profiling info")
+parser.add_argument("--profile", action="store_true", help="Print profiling info (doesn't work with C backend)")
 args = parser.parse_args()
 
 if args.pixels <= 0:

@@ -13,8 +13,11 @@ $(BUILD)/_carve.o: $(BUILD)/carve.c $(BUILD)/carve.h
 	cd $(BUILD); build_futhark_ffi carve
 
 $(BUILD)/carve.c $(BUILD)/carve.h &: $(SRC)/carve.fut
-	mkdir -p $(BUILD)
+	@mkdir -p $(BUILD)
 	futhark $(BACKEND) --library -o $(BUILD)/carve $^
+
+check:
+	futhark check $(SRC)/carve.fut
 
 clean:
 	rm -f $(BUILD)/_carve.* $(BUILD)/carve{.c,.h}

@@ -1,10 +1,12 @@
 from argparse import ArgumentParser
+import queue
 import sys
+import threading
 
 import av
 from futhark_ffi import Futhark
 import numpy as np
-from tqdm import tqdm
+from tqdm import trange
 
 try:
     import build._carve as _carve
@@ -43,20 +45,53 @@ def min_choice(x):
         return rng.choice(np.nonzero(min_mask)[0])
 
 
-container_in = av.open(args.input, "r")
-container_in.streams.video[0].thread_type = "AUTO"
-frames = container_in.streams.video[0].frames
-codec_context = container_in.streams.video[0].codec_context
-width = codec_context.width
-height = codec_context.height
+def decode():
+    with av.open(args.input, "r") as container_in:
+        container_in.streams.video[0].thread_type = "AUTO"
+        codec_context = container_in.streams.video[0].codec_context
 
-container_out = av.open(args.output, "w")
-stream_out = container_out.add_stream(
-    codec_context.codec.name, rate=codec_context.framerate
-)
-stream_out.width = width - args.pixels
-stream_out.height = height
-stream_out.thread_type = "AUTO"
+        # Send input video info
+        decode_queue.put(
+            (
+                container_in.streams.video[0].frames,
+                codec_context.width,
+                codec_context.height,
+                codec_context.codec.name,
+                codec_context.framerate,
+            )
+        )
+
+        for frame in container_in.decode(video=0):
+            decode_queue.put(frame)
+
+
+def encode():
+    with av.open(args.output, "w") as container_out:
+        stream_out = container_out.add_stream(codec_name, rate=framerate)
+        stream_out.width = width - args.pixels
+        stream_out.height = height
+        stream_out.thread_type = "AUTO"
+
+        for _ in range(frames):
+            frame = av.VideoFrame.from_ndarray(encode_queue.get(), format=VIDEO_FORMAT)
+            for packet in stream_out.encode(frame):
+                container_out.mux(packet)
+
+        for packet in stream_out.encode():
+            container_out.mux(packet)
+
+
+decode_queue = queue.Queue()
+encode_queue = queue.Queue()
+
+decode_thread = threading.Thread(target=decode, daemon=True, name="decode")
+decode_thread.start()
+
+# Dump input video info into globals for the encode thread and other consumers
+frames, width, height, codec_name, framerate = decode_queue.get()
+
+encode_thread = threading.Thread(target=encode, daemon=True, name="encode")
+encode_thread.start()
 
 
 carve = Futhark(_carve, profiling=args.profile)
@@ -72,40 +107,41 @@ for ftype in carve.types.values():
 seams = np.empty((args.pixels, height), np.int16)
 
 
-for i, frame in tqdm(
-    enumerate(container_in.decode(video=0)), total=frames, unit="fr", disable=None
-):
-    frame = carve.to_futhark(u8_2d, frame.to_ndarray(format=VIDEO_FORMAT))
-    for p in range(args.pixels):
-        if i == 0:
-            energy = carve.energy_first(frame)
-        else:
-            energy = carve.energy(frame, seams[p])
+def main():
+    for i in trange(frames, unit="fr"):
+        frame = carve.to_futhark(
+            u8_2d, decode_queue.get().to_ndarray(format=VIDEO_FORMAT)
+        )
 
-        index_map = carve.index_map(energy)
-        seam_energy = carve.seam_energy(energy, index_map)
-        index_map, seam_energy = carve.from_futhark(index_map, seam_energy)
-        min_seam_index = min_choice(seam_energy)
+        for p in range(args.pixels):
+            if i == 0:
+                energy = carve.energy_first(frame)
+            else:
+                energy = carve.energy(frame, seams[p])
 
-        # Apparently the GPU is slow at carving because it requires
-        # sequentially accessing the index map (stored in global memory).
-        # So, we transfer it over and do it in Python.
-        for h in range(height):
-            seams[p][h] = min_seam_index
-            min_seam_index = index_map[h][min_seam_index]
+            index_map = carve.index_map(energy)
+            seam_energy = carve.seam_energy(energy, index_map)
+            index_map, seam_energy = carve.from_futhark(index_map, seam_energy)
+            min_seam_index = min_choice(seam_energy)
 
-        frame = carve.resize_frame(frame, seams[p])
+            # Apparently the GPU is slow at carving because it requires
+            # sequentially accessing the index map (stored in global memory).
+            # So, we transfer it over and do it in Python.
+            for h in range(height):
+                seams[p][h] = min_seam_index
+                min_seam_index = index_map[h][min_seam_index]
 
-    frame = av.VideoFrame.from_ndarray(carve.from_futhark(frame), format=VIDEO_FORMAT)
-    for packet in stream_out.encode(frame):
-        container_out.mux(packet)
+            frame = carve.resize_frame(frame, seams[p])
 
-container_in.close()
+        encode_queue.put(carve.from_futhark(frame))
 
-for packet in stream_out.encode():
-    container_out.mux(packet)
 
-container_out.close()
+main()
+
+# Decode thread should finish first
+decode_thread.join()
+encode_thread.join()
+
 
 if args.profile:
     # Filter, format, and sort profiling output

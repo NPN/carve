@@ -1,19 +1,23 @@
-all: futhark/_carve_cl.o
+SRC     := futhark
+BUILD   := build
+# Can also be `c` or `cuda`
+BACKEND := opencl
 
-# The actual target is something like _carve_cl.cpython-39-x86_64-linux-gnu.so,
-# but this depends on the Python version. Targeting _carve_cl.o is simpler,
+
+all: $(BUILD)/_carve.o
+
+# The actual target is something like _carve.cpython-39-x86_64-linux-gnu.so,
+# but this depends on the Python version. Targeting _carve.o is simpler,
 # though it means that changing Python versions won't cause a rebuild.
-futhark/_carve_cl.o: futhark/carve_cl.c futhark/carve_cl.h
-	cd futhark; build_futhark_ffi carve_cl
+$(BUILD)/_carve.o: $(BUILD)/carve.c $(BUILD)/carve.h
+	cd $(BUILD); build_futhark_ffi carve
 
-futhark/carve_cl.c futhark/carve_cl.h &: futhark/carve.fut
-	# Change this futhark c or futhark cuda for other backends. The proper
-	# way to do this would be to have separate rules, but that seems noisy. It
-	# shouldn't really matter if the `_cl` suffix is wrong.
-	futhark opencl --library -o futhark/carve_cl $^
+$(BUILD)/carve.c $(BUILD)/carve.h &: $(SRC)/carve.fut
+	mkdir -p $(BUILD)
+	futhark $(BACKEND) --library -o $(BUILD)/carve $^
 
 clean:
-	rm -f futhark/_carve_cl.* futhark/carve_cl{.c,.h}
+	rm -f $(BUILD)/_carve.* $(BUILD)/carve{.c,.h}
 
 clean-data:
 	rm -rf futhark/data

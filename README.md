@@ -6,7 +6,7 @@ Resizing videos with GPU seam carving.
 
 Install the Python dependencies from `requirements.txt`. Then, follow the [instructions to install Futhark](https://futhark.readthedocs.io/en/stable/installation.html). If you want to use the OpenCL or CUDA backends, you will need the corresponding libraries. See the preceeding link for more details.
 
-Then, type `make`. This will compile the Futhark code into a library and use [`build_futhark_ffi`](https://github.com/pepijndevos/futhark-pycffi) to generate Python bindings. Currently, this only builds for OpenCL, but this can easily be changed—see the `Makefile` for details. (It is highly advised to use OpenCL or CUDA, as the C backend is far too slow for practical use.)
+Then, type `make`. This will compile the Futhark code into a library and use [`build_futhark_ffi`](https://github.com/pepijndevos/futhark-pycffi) to generate Python bindings. By default, this builds for OpenCL, but you can change this by editing the `Makefile` or passing an argument (e.g. `make BACKEND=cuda`). Note that switching backends will require running `make clean` first.
 
 ## Usage
 

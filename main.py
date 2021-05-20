@@ -7,9 +7,9 @@ import numpy as np
 from tqdm import tqdm
 
 try:
-    import futhark._carve_cl as _carve
+    import build._carve as _carve
 except ModuleNotFoundError:
-    print("Could not import '_carve_cl' module. Did you run `make`?")
+    print("Could not import '_carve' module. Did you run `make`?")
     sys.exit(1)
 
 VIDEO_FORMAT = "gray8"

@@ -74,7 +74,7 @@ entry temporal_coherence [h][w] (frame: [h][w]u8) (seam: [h]i16): [h][w]f32 =
   --
   -- map2 (-) ([0] ++ [|, |]) ([0] ++ [/, /]) = [0, | - /, | - /]
   -- scan (+) 0 [0, | - /, | - /]             = [0, | - /, || - //]
-  -- reduce (+) 0 [/, /]                      = //
+  -- f32.sum [/, /]                           = //
   -- map (+//) [0, | - /, || - //]            = [//, |/, ||]
   --
   -- In other words, we scan over the difference between `left` and `right`,
@@ -86,7 +86,7 @@ entry temporal_coherence [h][w] (frame: [h][w]u8) (seam: [h]i16): [h][w]f32 =
 
   let scan_reduce [n] (a: [n]f32) (b: [n]f32): [n]f32 =
     let s = scan (+) 0 (map2 (-) a b)
-    let b_sum = reduce (+) 0 b
+    let b_sum = f32.sum b
     in map (+b_sum) s
 
   in map2 scan_reduce left right

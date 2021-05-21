@@ -18,6 +18,8 @@ Any codec or container supported by FFmpeg should work. Some codecs, such as x26
 
 Currently, color is not supported, so the video will be converted to grayscale.
 
+Temporal coherence does not work well on abrupt cuts, so a simple heuristic (L1 distance on luma histograms) is used to [detect shot transitions](https://en.wikipedia.org/wiki/Shot_transition_detection). Use `--threshold` to configure the sensitivity of this heuristic. If the distance between two frames is below `--threshold`, then they will be considered a single shot, and temporal coherence will be enabled. If the distance is at or above `--threshold`, then the frames will be considered different shots, and temporal coherence will be disabled for that frame. In an extreme case, if `--threshold` is set to 0, then temporal coherence will always be disabled, and if it's set to `1`, then temporal coherence will always be enabled.
+
 If you want to reduce the height of the video instead of the width, flip the video before carving and then flip it back afterwards. It doesn't matter how you flip it so long as the height and width are exchanged. For example:
 ```
 ffmpeg -i video.mp4 -vf transpose video-flip.mp4

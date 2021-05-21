@@ -163,3 +163,14 @@ entry seam_energy [h][w] (energy: [h][w]f32) (index: [h][w]i16): [w]f32 =
               in map (\r -> r[0] `op` r[1])
                      (unflatten (length as' / 2) 2 as')
   in res[0].0
+
+entry frame_histogram [h][w] (frame: [h][w]u8): [256]f32 =
+  let bins = replicate 256 0
+  let s = h * w
+  let is = map i64.u8 (flatten frame) :> [s]i64
+  let as = replicate (h * w) 1        :> [s]f32
+  in reduce_by_index bins (+) 0 is as
+
+entry histogram_dist (h1: [256]f32) (h2: [256]f32): f32 =
+  -- L1 (Manhattan) distance seems to work fine
+  map2 (-) h1 h2 |> map f32.abs |> f32.sum

@@ -21,11 +21,24 @@ parser = ArgumentParser(description="Resize videos with seam carving.")
 parser.add_argument("input", help="Input video file")
 parser.add_argument("output", help="Output video file")
 parser.add_argument("pixels", type=int, help="Number of pixels to carve")
-parser.add_argument("--profile", action="store_true", help="Print profiling info (doesn't work with C backend)")
+parser.add_argument(
+    "--threshold",
+    default=0.3,
+    type=float,
+    help="Shot detection threshold (default: %(default)s)",
+)
+parser.add_argument(
+    "--profile",
+    action="store_true",
+    help="Print profiling info (doesn't work with C backend)",
+)
 args = parser.parse_args()
 
 if args.pixels <= 0:
-    print("`pixels` must be be at least 1")
+    print("`pixels` must be at least 1")
+    sys.exit(1)
+elif not (0 <= args.threshold <= 1):
+    print("`--threshold` must be between 0 and 1, inclusive")
     sys.exit(1)
 
 
@@ -108,13 +121,29 @@ seams = np.empty((args.pixels, height), np.int16)
 
 
 def main():
+    hist_dist = 0
+    prev_hist = None
+    # The maximum distance between two histograms is 2 * width * height (e.g.
+    # one histogram has all of its pixels in bin 0, and the other has all of
+    # its pixels in bin 1)
+    MAX_DIST = 2 * width * height
+
     for i in trange(frames, unit="fr"):
         frame = carve.to_futhark(
             u8_2d, decode_queue.get().to_ndarray(format=VIDEO_FORMAT)
         )
 
+        # If threshold is 0, then TC is always disabled, so keeping hist_dist
+        # at 0 is fine.  If threshold is 1, then TC is always enabled, so we
+        # still don't need to calculate the actual histogram distance.
+        if not (args.threshold == 0 or args.threshold == 1):
+            hist = carve.frame_histogram(frame)
+            if prev_hist is not None:
+                hist_dist = carve.histogram_dist(hist, prev_hist) / MAX_DIST
+            prev_hist = hist
+
         for p in range(args.pixels):
-            if i == 0:
+            if i == 0 or hist_dist >= args.threshold:
                 energy = carve.energy_first(frame)
             else:
                 energy = carve.energy(frame, seams[p])
